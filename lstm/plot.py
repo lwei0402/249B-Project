@@ -11,6 +11,7 @@ from os import listdir
 
 
 #Create and save CSV
+
 mypath ='data/csv/'
 result = []
 lst = listdir(mypath)
@@ -22,9 +23,9 @@ for filename in lst:
 	    for row in readCSV:
 	        result.append(row[1])
 
-with open('new.txt', 'w') as f:
-    for item in result:
-        f.write("%s\n" % item)
+# with open('new.txt', 'w') as f:
+#     for item in result:
+#         f.write("%s\n" % item)
 
 plt.plot(result, label='Loaded from file!')
 plt.show()

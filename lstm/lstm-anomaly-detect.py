@@ -14,10 +14,10 @@ from numpy import arange, sin, pi, random
 np.random.seed(1234)
 
 # Global hyper-parameters
-sequence_length = 50
+sequence_length = 100
 random_data_dup = 10  # each sample randomly duplicated between 0 and 9 times, see dropin function
-epochs = 5
-batch_size = 50
+epochs = 10
+batch_size = 64
 
 
 def dropin(X, y):
@@ -48,8 +48,15 @@ def z_norm(result):
 def get_split_prep_data(train_start, train_end,
                           test_start, test_end):
     data = np.loadtxt('data/new.txt', delimiter='\n', unpack=True)
+
+
     print("Length of Data", len(data))
 
+    for i in range(len(data)-1):
+    	if data[i] > 4.25 or data[i] < -1:
+    		data[i] = data[i-1]
+    # plt.plot(data)
+    # plt.show()
     # train data
     print ("Creating train data...")
 
@@ -94,8 +101,33 @@ def get_split_prep_data(train_start, train_end,
 
 def build_model():
     model = Sequential()
-    layers = {'input': 1, 'hidden1': 64, 'hidden2': 256, 'hidden3': 100, 'output': 1}
+    ###Three LSTM
 
+    # layers = {'input': 1, 'hidden1': 64, 'hidden2': 256, 'hidden3': 100, 'output': 1}
+
+    # model.add(LSTM(
+    #         input_length=sequence_length - 1,
+    #         input_dim=layers['input'],
+    #         output_dim=layers['hidden1'],
+    #         return_sequences=True))
+    # model.add(Dropout(0.2))
+
+    # model.add(LSTM(
+    #         layers['hidden2'],
+    #         return_sequences=True))
+    # model.add(Dropout(0.2))
+
+    # model.add(LSTM(
+    #         layers['hidden3'],
+    #         return_sequences=False))
+    # model.add(Dropout(0.2))
+
+    # model.add(Dense(
+    #         output_dim=layers['output']))
+    # model.add(Activation("linear"))
+
+    ###two LSTM + two FC
+    layers = {'input': 1, 'hidden1': 64, 'hidden2': 64, 'hidden3': 64, 'hidden4': 64, 'output': 1}
     model.add(LSTM(
             input_length=sequence_length - 1,
             input_dim=layers['input'],
@@ -105,20 +137,28 @@ def build_model():
 
     model.add(LSTM(
             layers['hidden2'],
-            return_sequences=True))
-    model.add(Dropout(0.2))
-
-    model.add(LSTM(
-            layers['hidden3'],
             return_sequences=False))
     model.add(Dropout(0.2))
+
+    model.add(Dense(
+            output_dim=layers['hidden3']))
+    model.add(Activation("relu"))
+
+    model.add(Dense(
+            output_dim=layers['hidden4']))
+    model.add(Activation("relu"))
 
     model.add(Dense(
             output_dim=layers['output']))
     model.add(Activation("linear"))
 
+
+
+
+
     start = time.time()
-    model.compile(loss="mse", optimizer="rmsprop")
+    # model.compile(loss="mse", optimizer="rmsprop")
+    model.compile(loss="mae", optimizer="adam")
     print ("Compilation Time : ", time.time() - start)
     return model
 
