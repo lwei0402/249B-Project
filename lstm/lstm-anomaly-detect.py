@@ -6,17 +6,27 @@ The basic idea is to detect anomalies in a time-series.
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+from keras.layers import Convolution1D, MaxPooling1D, Flatten
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
 from keras.models import Sequential
 from numpy import arange, sin, pi, random
+import os
+from keras.utils import plot_model
+from keras.layers import TimeDistributed
+from keras.layers.convolutional import Conv1D
 
+#Using CPU
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+#Setting random seed
 np.random.seed(1234)
 
 # Global hyper-parameters
 sequence_length = 100
 random_data_dup = 10  # each sample randomly duplicated between 0 and 9 times, see dropin function
-epochs = 10
+epochs = 100
 batch_size = 64
 
 
@@ -101,9 +111,9 @@ def get_split_prep_data(train_start, train_end,
 
 def build_model():
     model = Sequential()
-    ###Three LSTM
 
-    # layers = {'input': 1, 'hidden1': 64, 'hidden2': 256, 'hidden3': 100, 'output': 1}
+    ###Three LSTM
+    # layers = {'input': 1, 'hidden1': 64, 'hidden2': 64, 'hidden3': 64, 'output': 1}
 
     # model.add(LSTM(
     #         input_length=sequence_length - 1,
@@ -126,40 +136,97 @@ def build_model():
     #         output_dim=layers['output']))
     # model.add(Activation("linear"))
 
+
     ###two LSTM + two FC
-    layers = {'input': 1, 'hidden1': 64, 'hidden2': 64, 'hidden3': 64, 'hidden4': 64, 'output': 1}
-    model.add(LSTM(
-            input_length=sequence_length - 1,
-            input_dim=layers['input'],
-            output_dim=layers['hidden1'],
-            return_sequences=True))
+    # layers = {'input': 1, 'hidden1': 128, 'hidden2': 128, 'hidden3': 128, 'hidden4': 128, 'output': 1}
+    # model.add(LSTM(
+    #         input_length=sequence_length - 1,
+    #         input_dim=layers['input'],
+    #         output_dim=layers['hidden1'],
+    #         return_sequences=True))
+    # model.add(Dropout(0.2))
+
+    # model.add(LSTM(
+    #         layers['hidden2'],
+    #         return_sequences=False))
+    # model.add(Dropout(0.2))
+
+    # model.add(Dense(
+    #         output_dim=layers['hidden3']))
+    # model.add(Activation("relu"))
+
+    # model.add(Dense(
+    #         output_dim=layers['hidden4']))
+    # model.add(Activation("relu"))
+
+    # model.add(Dense(
+    #         output_dim=layers['output']))
+    # model.add(Activation("linear"))
+
+    ###CNN Model
+    # model.add(Convolution1D(input_shape = (99,1), 
+    #                         nb_filter=64,
+    #                         filter_length=4,
+    #                         activation='relu'))
+    # model.add(MaxPooling1D(pool_length=2))
+
+    # model.add(Convolution1D(input_shape = (99,1), 
+    #                         nb_filter=64,
+    #                         filter_length=4,
+    #                         activation='relu'))
+    # model.add(MaxPooling1D(pool_length=2))
+
+    # model.add(Dropout(0.2))
+    # model.add(Flatten())
+
+    # model.add(Dense(256))
+    # model.add(Dropout(0.2))
+    # model.add(Activation('relu'))
+
+    # model.add(Dense(1))
+    # model.add(Activation('linear'))
+
+    #CNN-LSTM
+    # model.add(Conv1D(filters=64, kernel_size=4, activation='relu', input_shape=(99, 1)))
+    # model.add(MaxPooling1D(pool_size=2))
+    # model.add(Dropout(0.2))
+    # model.add(TimeDistributed(Flatten()))
+    # model.add(LSTM(64, activation='relu'))
+
+    # model.add(Dense(1))
+    # model.add(Activation('linear'))
+
+
+    # model.add(Convolution1D(input_shape = (99,1), 
+    #                         nb_filter=64,
+    #                         filter_length=4,
+    #                         activation='relu'))
+    # model.add(MaxPooling1D(pool_length=2))
+
+    model.add(Convolution1D(input_shape = (99,1), 
+                            nb_filter=64,
+                            filter_length=4,
+                            activation='relu'))
+    model.add(MaxPooling1D(pool_length=2))
+
+    model.add(Dropout(0.2))
+    model.add(TimeDistributed(Flatten()))
+
+    # model.add(LSTM(128,return_sequences=True,activation='relu'))
+    # model.add(Dropout(0.2))
+    model.add(LSTM(128,return_sequences=False,activation='relu'))
     model.add(Dropout(0.2))
 
-    model.add(LSTM(
-            layers['hidden2'],
-            return_sequences=False))
-    model.add(Dropout(0.2))
-
-    model.add(Dense(
-            output_dim=layers['hidden3']))
+    model.add(Dense(128))
     model.add(Activation("relu"))
-
-    model.add(Dense(
-            output_dim=layers['hidden4']))
-    model.add(Activation("relu"))
-
-    model.add(Dense(
-            output_dim=layers['output']))
-    model.add(Activation("linear"))
-
-
-
-
+    model.add(Dense(1))
+    model.add(Activation('linear'))
 
     start = time.time()
     # model.compile(loss="mse", optimizer="rmsprop")
     model.compile(loss="mae", optimizer="adam")
     print ("Compilation Time : ", time.time() - start)
+    plot_model(model, to_file='model.png',show_shapes=True)
     return model
 
 
@@ -180,9 +247,16 @@ def run_network(model=None, data=None):
 
     try:
         print("Training...")
-        model.fit(
+        history = model.fit(
                 X_train, y_train,
                 batch_size=batch_size, nb_epoch=epochs, validation_split=0.05)
+        plt.plot(history.history['loss'])
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'test'], loc='upper left')
+        plt.show()
+
         print("Predicting...")
         predicted = model.predict(X_test)
         print("Reshaping predicted")
